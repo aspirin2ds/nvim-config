@@ -1,0 +1,12 @@
+# Neovim writes these into the config dir; none of them belong in git.
+spell/
+*.log
+
+# Local, machine-specific overrides. Create lua/local.lua for anything that
+# shouldn't sync (work-only paths, experiments) and require it from init.lua
+# with a pcall.
+lua/local.lua
+
+# NOTE: nvim-pack-lock.json is deliberately NOT ignored. It pins every plugin
+# to an exact commit, which is what makes this config reproducible across
+# machines. Commit it after every vim.pack.update() that leaves you working.
