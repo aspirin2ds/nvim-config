@@ -11,17 +11,33 @@
 -- plugin ever measurably hurts startup, wrap its add() in an autocmd.
 
 vim.pack.add({
-  { src = "https://github.com/folke/tokyonight.nvim" },
+  { src = "https://github.com/catppuccin/nvim", name = "catppuccin" },
   { src = "https://github.com/mason-org/mason.nvim" },
   { src = "https://github.com/WhoIsSethDaniel/mason-tool-installer.nvim" },
   { src = "https://github.com/nvim-treesitter/nvim-treesitter", version = "main" },
   { src = "https://github.com/ibhagwan/fzf-lua" },
   { src = "https://github.com/lewis6991/gitsigns.nvim" },
+  { src = "https://github.com/stevearc/conform.nvim" },
+  { src = "https://github.com/folke/which-key.nvim" },
 })
 
 -- ---------------------------------------------------------------- colorscheme
-require("tokyonight").setup({ style = "night" })
-vim.cmd.colorscheme("tokyonight")
+-- The repo is catppuccin/nvim but the Lua module is "catppuccin", hence the
+-- explicit name= above -- without it vim.pack would call the plugin "nvim".
+-- Flavours: latte (light), frappe, macchiato, mocha (darkest).
+require("catppuccin").setup({
+  flavour = "mocha",
+  background = { light = "latte", dark = "mocha" },
+  integrations = {
+    fzf = true,
+    gitsigns = true,
+    mason = true,
+    treesitter = true,
+    which_key = true,
+    native_lsp = { enabled = true },
+  },
+})
+vim.cmd.colorscheme("catppuccin")
 
 -- ---------------------------------------------------------------------- mason
 -- Mason installs language servers / formatters into
@@ -40,6 +56,8 @@ require("mason-tool-installer").setup({
     "basedpyright", -- Python
     "stylua", -- Lua formatter
     "shfmt", -- shell formatter
+    "prettier", -- JS/TS/JSON/CSS/HTML/YAML/Markdown formatter
+    "ruff", -- Python formatter + linter
     "tree-sitter-cli", -- required by nvim-treesitter's main branch
   },
   run_on_start = true,
@@ -118,6 +136,70 @@ map("n", "<leader>fh", fzf.helptags, { desc = "Find help" })
 map("n", "<leader>fr", fzf.resume, { desc = "Resume last picker" })
 map("n", "<leader>fd", fzf.diagnostics_workspace, { desc = "Find diagnostics" })
 map("n", "<leader>/", fzf.blines, { desc = "Search in current buffer" })
+
+-- -------------------------------------------------------------------- conform
+-- Formatting. The LSP can format some of these, but not all -- stylua, shfmt
+-- and prettier aren't language servers, so nothing was running them before.
+--
+-- Go is deliberately absent from formatters_by_ft: gopls already formats with
+-- gofumpt (see lsp/gopls.lua), and lsp_format = "fallback" below picks that up.
+local conform = require("conform")
+conform.setup({
+  formatters_by_ft = {
+    lua = { "stylua" },
+    sh = { "shfmt" },
+    bash = { "shfmt" },
+    python = { "ruff_format" },
+    javascript = { "prettier" },
+    javascriptreact = { "prettier" },
+    typescript = { "prettier" },
+    typescriptreact = { "prettier" },
+    json = { "prettier" },
+    jsonc = { "prettier" },
+    css = { "prettier" },
+    html = { "prettier" },
+    yaml = { "prettier" },
+    markdown = { "prettier" },
+  },
+  default_format_opts = { lsp_format = "fallback" },
+  format_on_save = function(bufnr)
+    -- Set vim.g.disable_autoformat (global) or vim.b[bufnr].disable_autoformat
+    -- (this buffer) to skip. Toggle with :FormatToggle below.
+    if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+      return
+    end
+    return { timeout_ms = 1000, lsp_format = "fallback" }
+  end,
+})
+
+-- <leader>cf in lua/lsp.lua only fires when a server is attached, so map a
+-- plain formatter here too -- it works in any buffer conform knows about.
+map({ "n", "v" }, "<leader>cF", function()
+  conform.format({ async = true, lsp_format = "fallback" })
+end, { desc = "Format buffer/selection" })
+
+vim.api.nvim_create_user_command("FormatToggle", function(args)
+  if args.bang then
+    vim.b.disable_autoformat = not vim.b.disable_autoformat
+    vim.notify("format on save (buffer): " .. tostring(not vim.b.disable_autoformat))
+  else
+    vim.g.disable_autoformat = not vim.g.disable_autoformat
+    vim.notify("format on save (global): " .. tostring(not vim.g.disable_autoformat))
+  end
+end, { bang = true, desc = "Toggle format-on-save (! for current buffer only)" })
+
+-- ------------------------------------------------------------------ which-key
+-- Press <leader> and wait -- it lists what's available. The add() call below
+-- only names the prefix groups; the individual entries come from the `desc`
+-- field on every keymap in this config, which is why they're all filled in.
+local wk = require("which-key")
+wk.setup({ preset = "helix", delay = 400 })
+wk.add({
+  { "<leader>b", group = "buffer" },
+  { "<leader>c", group = "code" },
+  { "<leader>f", group = "find" },
+  { "<leader>g", group = "git" },
+})
 
 -- ------------------------------------------------------------------- gitsigns
 require("gitsigns").setup({
