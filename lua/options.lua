@@ -7,6 +7,25 @@ local o = vim.o
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+-- Clipboard over SSH. Force OSC 52 rather than letting Nvim auto-detect.
+--
+-- Auto-detection picks the *tmux* provider when $TMUX is set, which writes to
+-- a tmux paste buffer on the server -- the text never leaves the machine. It
+-- would otherwise fall through to xclip, which needs an X display this box
+-- doesn't have. OSC 52 instead hands the text to the terminal emulator as an
+-- escape sequence, so it lands in the clipboard of whatever machine you're
+-- sitting at.
+--
+-- Requires, outside Nvim:
+--   tmux    set -g set-clipboard on   (the default "external" refuses to
+--                                      forward OSC 52 from apps in a pane)
+--   iTerm2  Settings > General > Selection >
+--           "Applications in terminal may access clipboard"
+--
+-- Must be set before anything calls has('clipboard'), which is what
+-- initialises the provider -- hence the position at the top of this file.
+vim.g.clipboard = "osc52"
+
 -- Disable netrw. nvim-tree replaces it, and both being active causes the
 -- two to fight over directory buffers. This has to happen before any plugin
 -- loads, which is why it's here rather than in lua/plugins.lua.
