@@ -1,5 +1,9 @@
 {
   "plugins": {
+    "bufferline.nvim": {
+      "rev": "655133c3b4c3e5e05ec549b9f8cc2894ac6f51b3",
+      "src": "https://github.com/akinsho/bufferline.nvim"
+    },
     "catppuccin": {
       "rev": "79e2049a0fdf7ec840f8463fe1d962c94493196b",
       "src": "https://github.com/catppuccin/nvim"
@@ -7,6 +11,10 @@
     "conform.nvim": {
       "rev": "619363c30309d29ffa631e67c8183f2a72caa373",
       "src": "https://github.com/stevearc/conform.nvim"
+    },
+    "flash.nvim": {
+      "rev": "b6346946d10d07998efee029fb0f7a593806d0cd",
+      "src": "https://github.com/folke/flash.nvim"
     },
     "fzf-lua": {
       "rev": "8671012a7b2a1648595952c655039d51fb301c14",

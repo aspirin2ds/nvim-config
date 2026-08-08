@@ -21,6 +21,8 @@ vim.pack.add({
   { src = "https://github.com/folke/which-key.nvim" },
   { src = "https://github.com/nvim-tree/nvim-tree.lua" },
   { src = "https://github.com/nvim-tree/nvim-web-devicons" },
+  { src = "https://github.com/folke/flash.nvim" },
+  { src = "https://github.com/akinsho/bufferline.nvim" },
 })
 
 -- ---------------------------------------------------------------- colorscheme
@@ -37,7 +39,11 @@ require("catppuccin").setup({
     treesitter = true,
     which_key = true,
     nvimtree = true,
+    flash = true,
     native_lsp = { enabled = true },
+    -- bufferline is NOT listed here. Catppuccin handles it through a
+    -- separate "special" module passed to bufferline's own highlights
+    -- option -- see the bufferline section below.
   },
 })
 vim.cmd.colorscheme("catppuccin")
@@ -139,7 +145,8 @@ map("n", "<leader>ff", fzf.files, { desc = "Find files" })
 map("n", "<leader>fg", fzf.live_grep, { desc = "Grep in project" })
 map("n", "<leader>fb", fzf.buffers, { desc = "Find buffers" })
 map("n", "<leader>fh", fzf.helptags, { desc = "Find help" })
-map("n", "<leader>fr", fzf.resume, { desc = "Resume last picker" })
+map("n", "<leader>fr", fzf.oldfiles, { desc = "Recent files" })
+map("n", "<leader>fR", fzf.resume, { desc = "Resume last picker" })
 map("n", "<leader>fd", fzf.diagnostics_workspace, { desc = "Find diagnostics" })
 map("n", "<leader>/", fzf.blines, { desc = "Search in current buffer" })
 
@@ -224,6 +231,76 @@ require("nvim-tree").setup({
 
 map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
 map("n", "<leader>E", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal file in explorer" })
+
+-- ----------------------------------------------------------------- bufferline
+-- Open buffers rendered as tabs. Note these are BUFFERS, not Vim's native
+-- :tabs -- native tabs are window layouts, which is a different thing.
+require("bufferline").setup({
+  options = {
+    diagnostics = "nvim_lsp",
+    diagnostics_indicator = function(_, _, diag)
+      local s = {}
+      if diag.error then
+        s[#s + 1] = " " .. diag.error
+      end
+      if diag.warning then
+        s[#s + 1] = " " .. diag.warning
+      end
+      return table.concat(s, " ")
+    end,
+    separator_style = "slant",
+    show_buffer_close_icons = false,
+    always_show_bufferline = false, -- hide it when only one buffer is open
+    offsets = {
+      -- Keep the tabs above the editor, not above the file tree.
+      { filetype = "NvimTree", text = "Files", highlight = "Directory", separator = true },
+    },
+  },
+  -- catppuccin moved this out of `integrations` in v2; the old
+  -- catppuccin.groups.integrations.bufferline path no longer exists.
+  highlights = require("catppuccin.special.bufferline").get_theme(),
+})
+
+-- These override the plain :bprevious/:bnext from lua/keymaps.lua so the
+-- order follows what you see in the tabline (which you can reorder).
+map("n", "<S-h>", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buffer" })
+map("n", "<S-l>", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
+map("n", "<leader>bp", "<cmd>BufferLineTogglePin<CR>", { desc = "Pin/unpin buffer" })
+map("n", "<leader>bo", "<cmd>BufferLineCloseOthers<CR>", { desc = "Close other buffers" })
+map("n", "<S-Left>", "<cmd>BufferLineMovePrev<CR>", { desc = "Move buffer left" })
+map("n", "<S-Right>", "<cmd>BufferLineMoveNext<CR>", { desc = "Move buffer right" })
+for i = 1, 9 do
+  map("n", "<leader>" .. i, "<cmd>BufferLineGoToBuffer " .. i .. "<CR>", { desc = "Go to buffer " .. i })
+end
+
+-- ---------------------------------------------------------------------- flash
+-- Jump anywhere on screen: press s, then the characters you're aiming at,
+-- then the label that appears. Also upgrades f/t/;/, and / search.
+--
+-- NOTE: this takes over `s` (normally "substitute character"). Use `cl` for
+-- that instead. If you'd rather keep `s`, change the lhs below to something
+-- free like `<leader>s`.
+require("flash").setup({
+  modes = {
+    char = { jump_labels = true }, -- label mode for f/t/;/,
+  },
+})
+
+map({ "n", "x", "o" }, "s", function()
+  require("flash").jump()
+end, { desc = "Flash jump" })
+map({ "n", "x", "o" }, "S", function()
+  require("flash").treesitter()
+end, { desc = "Flash treesitter select" })
+map("o", "r", function()
+  require("flash").remote()
+end, { desc = "Remote flash (operate at distance)" })
+map({ "o", "x" }, "R", function()
+  require("flash").treesitter_search()
+end, { desc = "Treesitter search" })
+map("c", "<C-s>", function()
+  require("flash").toggle()
+end, { desc = "Toggle flash while searching" })
 
 -- ------------------------------------------------------------------ which-key
 -- Press <leader> and wait -- it lists what's available. The add() call below
