@@ -240,10 +240,68 @@ Mason's tools are **not** covered by that lockfile; it tracks its own versions.
 Add [mason-lock.nvim](https://github.com/zapling/mason-lock.nvim) if server
 drift across machines becomes a problem.
 
+## Clipboard
+
+Locally, nothing to do — Neovim auto-detects `pbcopy` on macOS, `wl-copy` or
+`xclip` on a Linux desktop.
+
+**Over SSH it needs three things, and only the first is in this repo.** If a
+yank isn't reaching your local machine, work down this list:
+
+| Layer | Setting |
+| --- | --- |
+| Neovim | `vim.g.clipboard = "osc52"` — set automatically when `$SSH_TTY` or `$SSH_CONNECTION` is present |
+| tmux | `set -g set-clipboard on` in `~/.tmux.conf.local` |
+| Terminal | iTerm2: *Settings → General → Selection → "Applications in terminal may access clipboard"*. Ghostty/WezTerm/kitty/Alacritty work out of the box. **Terminal.app cannot do OSC 52 at all.** |
+
+Why forcing is necessary: Neovim only auto-selects OSC 52 when no other
+clipboard tool is found *and* `'clipboard'` is unset — and a multiplexer
+inhibits the detection anyway (`:h clipboard-osc52`). Inside tmux it otherwise
+picks the **tmux** provider, which writes to a paste buffer on the server. The
+`+` register then reads back correctly, so it looks like it works while the
+text never leaves the machine.
+
+tmux's default `set-clipboard external` lets tmux set the clipboard from its
+own copy-mode but silently drops OSC 52 coming from applications in a pane.
+It must be `on`.
+
+Don't use oh-my-tmux's `tmux_conf_copy_to_os_clipboard` for this — it shells
+out to xsel/xclip/wl-copy, which need a local display a headless server
+doesn't have.
+
+To debug, send a payload straight to the terminal and try pasting it:
+
+```sh
+printf '\033]52;c;%s\a' "$(printf 'TEST123' | base64)" > "$(tmux list-clients -F '#{client_tty}' | head -1)"
+```
+
+If that pastes but Neovim doesn't, the running Neovim cached the old provider
+— restart it. Check with `:checkhealth vim.provider`, which should report
+`Clipboard tool found: OSC 52`.
+
+OSC 52 has a practical size cap (terminal- and tmux-dependent), so yanking
+thousands of lines may clip. Normal edits are nowhere near it.
+
+## Machine-specific settings
+
+`lua/local.lua` is gitignored and loaded last, so it can override anything.
+Create it for whatever shouldn't sync — work-only paths, a different theme on
+one box, experiments:
+
+```lua
+-- lua/local.lua
+vim.o.scrolloff = 99
+vim.cmd.colorscheme("catppuccin-latte")
+```
+
+Missing file is fine — `init.lua` loads it with `pcall`. The one thing that
+can't go here is `vim.g.clipboard`, which must be set before the clipboard
+provider initialises; that belongs in `lua/options.lua`.
+
 ## Gotchas
 
 - **`s` is flash**, not substitute-character. Use `cl`.
 - **`<leader>e` is the file tree.** The diagnostic float is `<leader>xd`.
 - **Two launches** on a fresh machine before treesitter parsers exist.
-- **`lua/local.lua` is gitignored** — put machine-specific settings there and
-  `pcall(require, "local")` from `init.lua`.
+- **Yanks not reaching your Mac over SSH?** See [Clipboard](#clipboard) — it's
+  three layers and two of them are outside this repo.

@@ -12,3 +12,13 @@ require("options") -- editor settings
 require("keymaps") -- key bindings that don't depend on plugins
 require("plugins") -- vim.pack + plugin setup
 require("lsp") -- language servers + completion
+
+-- Machine-specific overrides. lua/local.lua is gitignored, so this is where
+-- anything that shouldn't sync goes -- work-only paths, a different
+-- colourscheme on one box, experiments. Optional: pcall means a machine
+-- without the file starts normally.
+--
+-- Loaded last so it can override anything above. The one exception is
+-- vim.g.clipboard, which has to be set before the clipboard provider
+-- initialises -- put that in lua/options.lua instead.
+pcall(require, "local")

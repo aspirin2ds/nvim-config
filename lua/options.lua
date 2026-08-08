@@ -7,16 +7,26 @@ local o = vim.o
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
--- Clipboard over SSH. Force OSC 52 rather than letting Nvim auto-detect.
+-- Clipboard. Only forced when this is a remote session.
 --
--- Auto-detection picks the *tmux* provider when $TMUX is set, which writes to
--- a tmux paste buffer on the server -- the text never leaves the machine. It
--- would otherwise fall through to xclip, which needs an X display this box
--- doesn't have. OSC 52 instead hands the text to the terminal emulator as an
--- escape sequence, so it lands in the clipboard of whatever machine you're
--- sitting at.
+-- Over SSH, auto-detection picks the *tmux* provider when $TMUX is set, which
+-- writes to a tmux paste buffer on the server -- the text never leaves the
+-- box, and the + register still reads back correctly, so it looks like it
+-- worked. Failing that it falls through to xclip, which needs an X display a
+-- headless server doesn't have. OSC 52 instead hands the text to the terminal
+-- emulator as an escape sequence, so it reaches whatever machine you're
+-- actually sitting at.
 --
--- Requires, outside Nvim:
+-- Nvim can auto-detect OSC 52 support, but only "if no other clipboard-tool
+-- is found and when 'clipboard' is unset" -- and a multiplexer inhibits the
+-- detection anyway (:h clipboard-osc52). Both are true here, so force it.
+--
+-- Running locally this block is skipped on purpose: pbcopy on macOS (or
+-- wl-copy / xclip on a Linux desktop) is the better provider. OSC 52 *reads*
+-- are refused by many terminals for security even when writes are allowed,
+-- which would make pasting from the system clipboard unreliable.
+--
+-- Requires, outside Nvim, on the remote side:
 --   tmux    set -g set-clipboard on   (the default "external" refuses to
 --                                      forward OSC 52 from apps in a pane)
 --   iTerm2  Settings > General > Selection >
@@ -24,7 +34,9 @@ vim.g.maplocalleader = "\\"
 --
 -- Must be set before anything calls has('clipboard'), which is what
 -- initialises the provider -- hence the position at the top of this file.
-vim.g.clipboard = "osc52"
+if vim.env.SSH_TTY or vim.env.SSH_CONNECTION then
+  vim.g.clipboard = "osc52"
+end
 
 -- Disable netrw. nvim-tree replaces it, and both being active causes the
 -- two to fight over directory buffers. This has to happen before any plugin
