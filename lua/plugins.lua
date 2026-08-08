@@ -19,6 +19,8 @@ vim.pack.add({
   { src = "https://github.com/lewis6991/gitsigns.nvim" },
   { src = "https://github.com/stevearc/conform.nvim" },
   { src = "https://github.com/folke/which-key.nvim" },
+  { src = "https://github.com/nvim-tree/nvim-tree.lua" },
+  { src = "https://github.com/nvim-tree/nvim-web-devicons" },
 })
 
 -- ---------------------------------------------------------------- colorscheme
@@ -34,6 +36,7 @@ require("catppuccin").setup({
     mason = true,
     treesitter = true,
     which_key = true,
+    nvimtree = true,
     native_lsp = { enabled = true },
   },
 })
@@ -56,7 +59,10 @@ require("mason-tool-installer").setup({
     "basedpyright", -- Python
     "stylua", -- Lua formatter
     "shfmt", -- shell formatter
-    "prettier", -- JS/TS/JSON/CSS/HTML/YAML/Markdown formatter
+    "biome", -- JS/TS/JSON/CSS linter + formatter
+    "tailwindcss-language-server", -- Tailwind class completion
+    "json-lsp", -- JSON schema validation
+    "prettier", -- YAML/Markdown/HTML only (biome handles the rest)
     "ruff", -- Python formatter + linter
     "tree-sitter-cli", -- required by nvim-treesitter's main branch
   },
@@ -150,13 +156,22 @@ conform.setup({
     sh = { "shfmt" },
     bash = { "shfmt" },
     python = { "ruff_format" },
-    javascript = { "prettier" },
-    javascriptreact = { "prettier" },
-    typescript = { "prettier" },
-    typescriptreact = { "prettier" },
-    json = { "prettier" },
-    jsonc = { "prettier" },
-    css = { "prettier" },
+
+    -- biome, NOT prettier, for everything biome supports. Prettier's
+    -- defaults (double quotes, forced semicolons, width 80) fight a typical
+    -- biome.json (single quotes, semicolons asNeeded, width 100) -- running
+    -- the wrong one rewrites whole files and breaks `bun run lint`.
+    -- "biome" formats only. Swap to "biome-check" to also apply safe lint
+    -- fixes (removes unused imports) on every save.
+    javascript = { "biome" },
+    javascriptreact = { "biome" },
+    typescript = { "biome" },
+    typescriptreact = { "biome" },
+    json = { "biome" },
+    jsonc = { "biome" },
+    css = { "biome" },
+
+    -- biome doesn't handle these yet, so prettier keeps them.
     html = { "prettier" },
     yaml = { "prettier" },
     markdown = { "prettier" },
@@ -172,9 +187,9 @@ conform.setup({
   end,
 })
 
--- <leader>cf in lua/lsp.lua only fires when a server is attached, so map a
--- plain formatter here too -- it works in any buffer conform knows about.
-map({ "n", "v" }, "<leader>cF", function()
+-- The single format key. Lives here rather than in the LspAttach handler so
+-- it works in buffers with no language server attached at all.
+map({ "n", "v" }, "<leader>cf", function()
   conform.format({ async = true, lsp_format = "fallback" })
 end, { desc = "Format buffer/selection" })
 
@@ -187,6 +202,28 @@ vim.api.nvim_create_user_command("FormatToggle", function(args)
     vim.notify("format on save (global): " .. tostring(not vim.g.disable_autoformat))
   end
 end, { bang = true, desc = "Toggle format-on-save (! for current buffer only)" })
+
+-- ------------------------------------------------------------------ nvim-tree
+-- File explorer. netrw is disabled in lua/options.lua so the two don't fight.
+require("nvim-web-devicons").setup({})
+require("nvim-tree").setup({
+  view = { width = 34, preserve_window_proportions = true },
+  renderer = {
+    group_empty = true, -- collapse a/b/c when each has one child
+    indent_markers = { enable = true },
+  },
+  filters = {
+    dotfiles = false, -- show .env, .github etc
+    git_ignored = true, -- but hide node_modules, dist, build output
+  },
+  update_focused_file = { enable = true }, -- follow the buffer you're editing
+  git = { enable = true },
+  diagnostics = { enable = true }, -- LSP error/warn badges on files
+  actions = { open_file = { resize_window = false } },
+})
+
+map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
+map("n", "<leader>E", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal file in explorer" })
 
 -- ------------------------------------------------------------------ which-key
 -- Press <leader> and wait -- it lists what's available. The add() call below

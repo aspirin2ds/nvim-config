@@ -11,11 +11,18 @@
 -- tables; with four servers it's less work to write them yourself. Add it
 -- later if you want its several-hundred-server library.
 
+-- More than one server can attach to the same buffer, and that's intended:
+-- a .tsx file gets vtsls (types), biome (lint), and tailwindcss (classes)
+-- at once. They cover different things and don't overlap -- except on
+-- formatting, which is resolved in the LspAttach handler below.
 vim.lsp.enable({
   "lua_ls",
   "gopls",
   "vtsls",
   "basedpyright",
+  "biome",
+  "tailwindcss",
+  "jsonls",
 })
 
 -- ------------------------------------------------------------------ completion
@@ -48,13 +55,21 @@ vim.api.nvim_create_autocmd("LspAttach", {
     map("<leader>ca", vim.lsp.buf.code_action, "Code action")
     map("<leader>cr", vim.lsp.buf.rename, "Rename symbol")
     map("<leader>cs", fzf.lsp_document_symbols, "Document symbols")
-    map("<leader>cf", function()
-      vim.lsp.buf.format({ async = true })
-    end, "Format buffer")
+    -- NOTE: formatting is NOT mapped here. conform owns <leader>cf (see
+    -- lua/plugins.lua) so the same key works in buffers with no LSP at all.
 
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
     if not client then
       return
+    end
+
+    -- Biome is the formatter for JS/TS/JSON/CSS. vtsls also advertises
+    -- formatting, and its style is prettier-like -- double quotes, forced
+    -- semicolons -- which is the opposite of most biome.json setups. Turn it
+    -- off so nothing can pick the wrong one by accident.
+    if client.name == "vtsls" then
+      client.server_capabilities.documentFormattingProvider = false
+      client.server_capabilities.documentRangeFormattingProvider = false
     end
 
     -- Highlight other references to the symbol under the cursor.

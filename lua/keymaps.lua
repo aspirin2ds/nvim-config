@@ -27,8 +27,9 @@ map("n", "N", "Nzzzv")
 map("v", "<", "<gv")
 map("v", ">", ">gv")
 
--- Diagnostics
-map("n", "<leader>e", vim.diagnostic.open_float, { desc = "Show diagnostic detail" })
+-- Diagnostics. <leader>e used to show the float, but that key now toggles
+-- the file explorer (lua/plugins.lua), so the float moved to <leader>cd.
+map("n", "<leader>cd", vim.diagnostic.open_float, { desc = "Show diagnostic detail" })
 map("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Diagnostics to loclist" })
 
 -- Buffers

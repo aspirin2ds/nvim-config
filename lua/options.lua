@@ -7,6 +7,12 @@ local o = vim.o
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+-- Disable netrw. nvim-tree replaces it, and both being active causes the
+-- two to fight over directory buffers. This has to happen before any plugin
+-- loads, which is why it's here rather than in lua/plugins.lua.
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Line numbers: absolute for the cursor line, relative elsewhere. Makes
 -- motions like 5j / 12k readable straight off the gutter.
 o.number = true
