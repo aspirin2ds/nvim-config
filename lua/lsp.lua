@@ -49,12 +49,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local fzf = require("fzf-lua")
     map("gd", fzf.lsp_definitions, "Go to definition")
     map("gD", vim.lsp.buf.declaration, "Go to declaration")
-    map("gr", fzf.lsp_references, "List references")
     map("gI", fzf.lsp_implementations, "Go to implementation")
     map("gy", fzf.lsp_typedefs, "Go to type definition")
+
+    -- Deliberately NOT a bare `gr`. Nvim 0.11+ ships grn/gra/grr/gri/grt,
+    -- so `gr` is a prefix of five built-ins -- mapping it directly makes Vim
+    -- wait the full 'timeoutlen' on every press to see whether more keys are
+    -- coming. Overriding grr keeps the native grammar and the nicer picker.
+    map("grr", fzf.lsp_references, "List references")
+
     map("<leader>ca", vim.lsp.buf.code_action, "Code action")
     map("<leader>cr", vim.lsp.buf.rename, "Rename symbol")
     map("<leader>cs", fzf.lsp_document_symbols, "Document symbols")
+    map("<leader>ci", fzf.lsp_incoming_calls, "Incoming calls")
+    map("<leader>co", fzf.lsp_outgoing_calls, "Outgoing calls")
     -- NOTE: formatting is NOT mapped here. conform owns <leader>cf (see
     -- lua/plugins.lua) so the same key works in buffers with no LSP at all.
 
@@ -87,9 +95,9 @@ vim.api.nvim_create_autocmd("LspAttach", {
       })
     end
 
-    -- Inlay hints, off by default -- toggle with <leader>ch.
+    -- Inlay hints, off by default. Lives in the u (toggles) group.
     if client:supports_method("textDocument/inlayHint") then
-      map("<leader>ch", function()
+      map("<leader>uh", function()
         vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = buf }), { bufnr = buf })
       end, "Toggle inlay hints")
     end

@@ -23,6 +23,8 @@ vim.pack.add({
   { src = "https://github.com/nvim-tree/nvim-web-devicons" },
   { src = "https://github.com/folke/flash.nvim" },
   { src = "https://github.com/akinsho/bufferline.nvim" },
+  { src = "https://github.com/nvim-lua/plenary.nvim" }, -- harpoon dependency
+  { src = "https://github.com/ThePrimeagen/harpoon", version = "harpoon2" },
 })
 
 -- ---------------------------------------------------------------- colorscheme
@@ -141,14 +143,31 @@ local fzf = require("fzf-lua")
 fzf.setup({ "default" })
 
 local map = vim.keymap.set
+
+-- The split: f is "which FILE", s is "find TEXT". If you're naming a file,
+-- it's f; if you're searching content, it's s.
 map("n", "<leader>ff", fzf.files, { desc = "Find files" })
-map("n", "<leader>fg", fzf.live_grep, { desc = "Grep in project" })
-map("n", "<leader>fb", fzf.buffers, { desc = "Find buffers" })
-map("n", "<leader>fh", fzf.helptags, { desc = "Find help" })
 map("n", "<leader>fr", fzf.oldfiles, { desc = "Recent files" })
-map("n", "<leader>fR", fzf.resume, { desc = "Resume last picker" })
-map("n", "<leader>fd", fzf.diagnostics_workspace, { desc = "Find diagnostics" })
-map("n", "<leader>/", fzf.blines, { desc = "Search in current buffer" })
+map("n", "<leader>fb", fzf.buffers, { desc = "Find buffers" })
+map("n", "<leader>fn", "<cmd>enew<CR>", { desc = "New file" })
+
+map("n", "<leader>sg", fzf.live_grep, { desc = "Grep in project" })
+map("n", "<leader>sw", fzf.grep_cword, { desc = "Grep word under cursor" })
+map("v", "<leader>sw", fzf.grep_visual, { desc = "Grep selection" })
+map("n", "<leader>sb", fzf.blines, { desc = "Search in current buffer" })
+map("n", "<leader>sh", fzf.helptags, { desc = "Search help" })
+map("n", "<leader>sk", fzf.keymaps, { desc = "Search keymaps" })
+map("n", "<leader>sc", fzf.commands, { desc = "Search commands" })
+map("n", "<leader>sr", fzf.resume, { desc = "Resume last picker" })
+
+-- Diagnostics list -- the rest of the x group is in lua/keymaps.lua.
+map("n", "<leader>xx", fzf.diagnostics_workspace, { desc = "All diagnostics" })
+map("n", "<leader>xX", fzf.diagnostics_document, { desc = "Buffer diagnostics" })
+
+-- Top-level shortcuts for the three things used most often.
+map("n", "<leader><space>", fzf.files, { desc = "Find files" })
+map("n", "<leader>,", fzf.buffers, { desc = "Switch buffer" })
+map("n", "<leader>/", fzf.live_grep, { desc = "Grep in project" })
 
 -- -------------------------------------------------------------------- conform
 -- Formatting. The LSP can format some of these, but not all -- stylua, shfmt
@@ -199,6 +218,11 @@ conform.setup({
 map({ "n", "v" }, "<leader>cf", function()
   conform.format({ async = true, lsp_format = "fallback" })
 end, { desc = "Format buffer/selection" })
+
+map("n", "<leader>uf", function()
+  vim.g.disable_autoformat = not vim.g.disable_autoformat
+  vim.notify("format on save: " .. tostring(not vim.g.disable_autoformat))
+end, { desc = "Toggle format on save" })
 
 vim.api.nvim_create_user_command("FormatToggle", function(args)
   if args.bang then
@@ -267,11 +291,61 @@ map("n", "<S-h>", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buffer" })
 map("n", "<S-l>", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
 map("n", "<leader>bp", "<cmd>BufferLineTogglePin<CR>", { desc = "Pin/unpin buffer" })
 map("n", "<leader>bo", "<cmd>BufferLineCloseOthers<CR>", { desc = "Close other buffers" })
+
+-- A plain :bdelete closes any window showing the buffer, which wrecks a
+-- split layout. Point every such window at another buffer first, then
+-- delete. (This is what bufdelete.nvim does; it's small enough to inline.)
+map("n", "<leader>bd", function()
+  local target = vim.api.nvim_get_current_buf()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == target then
+      vim.api.nvim_win_call(win, function()
+        if not pcall(vim.cmd, "bprevious") or vim.api.nvim_win_get_buf(win) == target then
+          vim.cmd("enew")
+        end
+      end)
+    end
+  end
+  pcall(vim.api.nvim_buf_delete, target, { force = false })
+end, { desc = "Delete buffer (keep layout)" })
 map("n", "<S-Left>", "<cmd>BufferLineMovePrev<CR>", { desc = "Move buffer left" })
 map("n", "<S-Right>", "<cmd>BufferLineMoveNext<CR>", { desc = "Move buffer right" })
-for i = 1, 9 do
-  map("n", "<leader>" .. i, "<cmd>BufferLineGoToBuffer " .. i .. "<CR>", { desc = "Go to buffer " .. i })
+-- <leader>1-4 used to jump to bufferline positions. They're harpoon slots
+-- now (below): bufferline positions shift as buffers open and close, so
+-- they're the one thing you can't build muscle memory for.
+
+-- -------------------------------------------------------------------- harpoon
+-- Pin the handful of files you're actually working in and jump straight to
+-- them. Unlike buffer positions, a slot stays put until you change it.
+local harpoon = require("harpoon")
+harpoon:setup({
+  settings = {
+    save_on_toggle = true,
+    sync_on_ui_close = true,
+  },
+})
+
+map("n", "<leader>ha", function()
+  harpoon:list():add()
+end, { desc = "Add file to harpoon" })
+map("n", "<leader>hh", function()
+  harpoon.ui:toggle_quick_menu(harpoon:list())
+end, { desc = "Harpoon menu" })
+map("n", "<leader>hc", function()
+  harpoon:list():clear()
+end, { desc = "Clear harpoon list" })
+
+for i = 1, 4 do
+  map("n", "<leader>" .. i, function()
+    harpoon:list():select(i)
+  end, { desc = "Harpoon file " .. i })
 end
+map("n", "<C-p>", function()
+  harpoon:list():prev()
+end, { desc = "Harpoon previous" })
+map("n", "<C-n>", function()
+  harpoon:list():next()
+end, { desc = "Harpoon next" })
 
 -- ---------------------------------------------------------------------- flash
 -- Jump anywhere on screen: press s, then the characters you're aiming at,
@@ -311,8 +385,14 @@ wk.setup({ preset = "helix", delay = 400 })
 wk.add({
   { "<leader>b", group = "buffer" },
   { "<leader>c", group = "code" },
-  { "<leader>f", group = "find" },
+  { "<leader>f", group = "file/find" },
   { "<leader>g", group = "git" },
+  { "<leader>h", group = "harpoon" },
+  { "<leader>q", group = "quit" },
+  { "<leader>s", group = "search" },
+  { "<leader>u", group = "ui/toggle" },
+  { "<leader>w", group = "window" },
+  { "<leader>x", group = "diagnostics" },
 })
 
 -- ------------------------------------------------------------------- gitsigns
