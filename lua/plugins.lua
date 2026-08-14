@@ -75,6 +75,11 @@ require("mason-tool-installer").setup({
     "tree-sitter-cli", -- required by nvim-treesitter's main branch
   },
   run_on_start = true,
+  -- Registry refreshes and package checks can take hundreds of milliseconds.
+  -- Keep them off the critical startup path and avoid repeating the work for
+  -- every Nvim process opened during the day.
+  start_delay = 3000,
+  debounce_hours = 24,
 })
 
 -- ----------------------------------------------------------------- treesitter
@@ -104,8 +109,27 @@ local ts_parsers = {
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Start treesitter where a parser exists",
   callback = function(ev)
-    if pcall(vim.treesitter.start, ev.buf) then
-      vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    local buf = ev.buf
+    local function start()
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+      if pcall(vim.treesitter.start, buf) then
+        vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+      end
+    end
+
+    if vim.v.vim_did_enter == 1 then
+      start()
+    else
+      -- Loading a parser can take over 100 ms on the first buffer. Let Nvim
+      -- draw the file first; highlighting is ready immediately afterward.
+      vim.api.nvim_create_autocmd("VimEnter", {
+        once = true,
+        callback = function()
+          vim.defer_fn(start, 20)
+        end,
+      })
     end
   end,
 })
@@ -128,14 +152,9 @@ vim.api.nvim_create_user_command("TSSync", function()
   require("nvim-treesitter").install(missing)
 end, { desc = "Install missing treesitter parsers" })
 
--- Run it automatically once the CLI is actually available. On a brand-new
--- machine mason is still downloading during the first launch, so this no-ops
--- the first time and does the real work on the second.
-vim.schedule(function()
-  if vim.fn.executable("tree-sitter") == 1 then
-    pcall(vim.cmd.TSSync)
-  end
-end)
+-- Parser discovery invokes the tree-sitter CLI and is relatively expensive,
+-- even when every parser is already installed. Run :TSSync after adding a
+-- language (or on a new machine) instead of paying that cost on every launch.
 
 -- -------------------------------------------------------------------- fzf-lua
 -- Needs the `fzf` binary on PATH. Uses ripgrep for live_grep when present.

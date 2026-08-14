@@ -15,7 +15,7 @@
 -- a .tsx file gets vtsls (types), biome (lint), and tailwindcss (classes)
 -- at once. They cover different things and don't overlap -- except on
 -- formatting, which is resolved in the LspAttach handler below.
-vim.lsp.enable({
+local servers = {
   "lua_ls",
   "gopls",
   "vtsls",
@@ -23,7 +23,25 @@ vim.lsp.enable({
   "biome",
   "tailwindcss",
   "jsonls",
-})
+}
+
+local function enable_servers()
+  vim.lsp.enable(servers)
+end
+
+if vim.v.vim_did_enter == 1 then
+  enable_servers()
+else
+  -- Starting several project servers delays the first screen even though the
+  -- clients themselves are asynchronous. Enable them once the UI is ready;
+  -- vim.lsp.enable() also considers the buffer opened during startup.
+  vim.api.nvim_create_autocmd("VimEnter", {
+    once = true,
+    callback = function()
+      vim.defer_fn(enable_servers, 30)
+    end,
+  })
+end
 
 -- ------------------------------------------------------------------ completion
 -- 0.12 has insert-mode autocompletion built in. No nvim-cmp, no sources,
