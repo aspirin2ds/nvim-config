@@ -30,8 +30,9 @@ These are **not** installed by this repo and must exist on the machine first:
 
 Without a Nerd Font everything still works, but icons render as tofu boxes.
 
-Everything else — plugins, language servers, formatters, treesitter parsers —
-installs itself on first launch.
+Plugins install on first launch. Language servers and formatters are installed
+explicitly with `:MasonToolsUpdate` so startup never performs package or network
+checks. Treesitter parsers are installed with `:TSSync`.
 
 ## Install
 
@@ -40,9 +41,9 @@ git clone https://github.com/aspirin2ds/nvim-config.git ~/.config/nvim
 nvim
 ```
 
-**Launch twice on a new machine.** The first run installs plugins and mason
-fetches the tree-sitter CLI; parsers compile on the second. To try it without
-touching an existing config:
+On a new machine, launch Neovim and run `:MasonToolsUpdate`. Once Mason has
+finished (including the tree-sitter CLI), run `:TSSync` to compile the parsers.
+To try it without touching an existing config:
 
 ```sh
 git clone https://github.com/aspirin2ds/nvim-config.git ~/.config/nvim-test
@@ -132,7 +133,7 @@ makes Vim wait `timeoutlen` on every press.
 ## Language servers
 
 Configured in `lsp/*.lua`, one plain table per server, auto-discovered by
-Neovim. Installed by mason on first launch.
+Neovim. Install and update them manually with `:MasonToolsUpdate`.
 
 | Server | For |
 | --- | --- |

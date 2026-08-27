@@ -74,12 +74,11 @@ require("mason-tool-installer").setup({
     "ruff", -- Python formatter + linter
     "tree-sitter-cli", -- required by nvim-treesitter's main branch
   },
-  run_on_start = true,
-  -- Registry refreshes and package checks can take hundreds of milliseconds.
-  -- Keep them off the critical startup path and avoid repeating the work for
-  -- every Nvim process opened during the day.
-  start_delay = 3000,
-  debounce_hours = 24,
+  -- Do not check the registry on startup. In particular, the first Nvim
+  -- process after logging in over SSH otherwise does network/package work in
+  -- the background and can make the freshly drawn editor feel unresponsive.
+  -- Run :MasonToolsUpdate manually when changing or updating tools.
+  run_on_start = false,
 })
 
 -- ----------------------------------------------------------------- treesitter
