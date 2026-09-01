@@ -10,6 +10,21 @@
 -- vim.pack has no event/ft/cmd lazy-loading. That's fine at this size; if a
 -- plugin ever measurably hurts startup, wrap its add() in an autocmd.
 
+-- Parsers are coupled to the nvim-treesitter revision. Treat :TSUpdate as the
+-- plugin's build step so a plugin update cannot leave old parser binaries and
+-- queries behind. This hook must exist before the first vim.pack operation.
+vim.api.nvim_create_autocmd("PackChanged", {
+  desc = "Update parsers after nvim-treesitter updates",
+  callback = function(ev)
+    if ev.data.kind ~= "update" or ev.data.spec.name ~= "nvim-treesitter" then
+      return
+    end
+    vim.schedule(function()
+      require("nvim-treesitter").update(nil, { summary = true }):raise_on_error()
+    end)
+  end,
+})
+
 vim.pack.add({
   { src = "https://github.com/catppuccin/nvim", name = "catppuccin" },
   { src = "https://github.com/mason-org/mason.nvim" },
@@ -133,27 +148,30 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- :TSSync installs whatever is missing from ts_parsers above.
+-- :TSSync installs missing desired parsers, then updates every desired parser
+-- to the revision paired with the current nvim-treesitter checkout.
 vim.api.nvim_create_user_command("TSSync", function()
   if vim.fn.executable("tree-sitter") == 0 then
     vim.notify("tree-sitter CLI not found -- wait for mason to finish, then restart", vim.log.levels.WARN)
     return
   end
-  local installed = require("nvim-treesitter.config").get_installed()
-  local missing = vim.tbl_filter(function(p)
-    return not vim.tbl_contains(installed, p)
-  end, ts_parsers)
-  if #missing == 0 then
-    vim.notify("treesitter: all parsers present")
-    return
-  end
-  vim.notify("treesitter: installing " .. table.concat(missing, ", "))
-  require("nvim-treesitter").install(missing)
-end, { desc = "Install missing treesitter parsers" })
+  local treesitter = require("nvim-treesitter")
+  treesitter.install(ts_parsers, { summary = true }):await(function(install_err)
+    if install_err then
+      vim.notify("treesitter install failed: " .. tostring(install_err), vim.log.levels.ERROR)
+      return
+    end
+    treesitter.update(ts_parsers, { summary = true }):await(function(update_err)
+      if update_err then
+        vim.notify("treesitter update failed: " .. tostring(update_err), vim.log.levels.ERROR)
+      end
+    end)
+  end)
+end, { desc = "Install and update treesitter parsers" })
 
 -- Parser discovery invokes the tree-sitter CLI and is relatively expensive,
 -- even when every parser is already installed. Run :TSSync after adding a
--- language (or on a new machine) instead of paying that cost on every launch.
+-- language or on a new machine; plugin updates run the update half automatically.
 
 -- -------------------------------------------------------------------- fzf-lua
 -- Needs the `fzf` binary on PATH. Uses ripgrep for live_grep when present.

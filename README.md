@@ -9,7 +9,7 @@ install a plugin for aren't here:
 | --- | --- |
 | lazy.nvim / packer | `vim.pack` |
 | nvim-lspconfig | `vim.lsp.enable` + `lsp/*.lua` |
-| nvim-cmp / blink.cmp | `vim.o.autocomplete` |
+| nvim-cmp / blink.cmp | `vim.o.autocomplete` + `vim.lsp.completion` |
 
 ## Requirements
 
@@ -32,7 +32,8 @@ Without a Nerd Font everything still works, but icons render as tofu boxes.
 
 Plugins install on first launch. Language servers and formatters are installed
 explicitly with `:MasonToolsUpdate` so startup never performs package or network
-checks. Treesitter parsers are installed with `:TSSync`.
+checks. Treesitter parsers are installed and updated with `:TSSync`; existing
+parsers are also updated automatically after the nvim-treesitter plugin changes.
 
 ## Install
 
@@ -215,7 +216,7 @@ depends on. which-key always reflects reality.
 ```vim
 :lua vim.pack.update()   " review the diff, :w to confirm
 :Mason                   " manage language servers
-:TSSync                  " install missing treesitter parsers
+:TSSync                  " install and update treesitter parsers
 :checkhealth             " diagnose
 ```
 

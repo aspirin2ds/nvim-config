@@ -29,6 +29,9 @@ return {
     tailwindCSS = {
       validate = true,
       classAttributes = { "class", "className", "classList", "ngClass" },
+      -- Current Tailwind IntelliSense recognizes strings anywhere inside these
+      -- calls, including nested arrays and objects, without fragile quote regexes.
+      classFunctions = { "cva", "cx", "cn" },
       lint = {
         cssConflict = "warning",
         invalidApply = "error",
@@ -37,16 +40,6 @@ return {
         invalidTailwindDirective = "error",
         invalidVariant = "error",
         recommendedVariantOrder = "warning",
-      },
-      experimental = {
-        -- shadcn puts classes inside cva() and cn() rather than a plain
-        -- className string. Without these patterns you get no completion
-        -- inside any component in components/ui.
-        classRegex = {
-          { "cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]" },
-          { "cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)" },
-          { "cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)" },
-        },
       },
     },
   },

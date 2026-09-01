@@ -4,7 +4,15 @@
 return {
   cmd = { "basedpyright-langserver", "--stdio" },
   filetypes = { "python" },
-  root_markers = { "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" },
+  root_markers = {
+    "pyrightconfig.json",
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "requirements.txt",
+    "Pipfile",
+    ".git",
+  },
   settings = {
     basedpyright = {
       analysis = {
@@ -12,7 +20,6 @@ return {
         -- is the sane starting point.
         typeCheckingMode = "standard",
         autoSearchPaths = true,
-        useLibraryCodeForTypes = true,
         diagnosticMode = "openFilesOnly",
         inlayHints = {
           variableTypes = true,

@@ -44,10 +44,11 @@ else
 end
 
 -- ------------------------------------------------------------------ completion
--- 0.12 has insert-mode autocompletion built in. No nvim-cmp, no sources,
--- no snippet engine wiring.
+-- 0.12 has insert-mode autocompletion built in. No nvim-cmp or separate
+-- snippet engine wiring: vim.lsp.completion applies snippets, imports, and
+-- completion commands when an item is accepted with <C-y>.
 vim.o.completeopt = "menu,menuone,noselect,popup,fuzzy"
-vim.o.autocomplete = true -- trigger without pressing <C-x><C-o>
+vim.o.autocomplete = true -- words from 'complete'; LSP is enabled on attach
 vim.o.pumheight = 12
 
 -- ------------------------------------------------------------------- on attach
@@ -87,6 +88,14 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
     if not client then
       return
+    end
+
+    -- Register this client with Nvim's native completion engine. 'autocomplete'
+    -- by itself only uses the sources in 'complete' (buffer words by default);
+    -- LSP completion must be enabled separately for trigger characters,
+    -- snippets, additional text edits, and completion commands to work.
+    if client:supports_method("textDocument/completion") then
+      vim.lsp.completion.enable(true, client.id, buf, { autotrigger = true })
     end
 
     -- Biome is the formatter for JS/TS/JSON/CSS. vtsls also advertises

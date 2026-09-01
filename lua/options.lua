@@ -65,9 +65,11 @@ o.inccommand = "split" -- live preview of :s substitutions
 o.splitright = true
 o.splitbelow = true
 
--- Persistent undo across restarts. Lives in ~/.local/state/nvim/undo.
+-- Persistent undo across restarts, plus swap-based recovery for unsaved edits.
+-- Undo history lives in ~/.local/state/nvim/undo; swap files use Nvim's
+-- standard state directory and are removed after a clean exit.
 o.undofile = true
-o.swapfile = false
+o.swapfile = true
 
 -- UI
 o.signcolumn = "yes" -- always on, so text doesn't jump when a sign appears
