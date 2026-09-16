@@ -19,7 +19,17 @@ vim.g.maplocalleader = "\\"
 --
 -- Nvim can auto-detect OSC 52 support, but only "if no other clipboard-tool
 -- is found and when 'clipboard' is unset" -- and a multiplexer inhibits the
--- detection anyway (:h clipboard-osc52). Both are true here, so force it.
+-- detection anyway (:h clipboard-osc52). So force it.
+--
+-- Copy goes out over OSC 52; paste deliberately does NOT. An OSC 52 *read*
+-- asks the terminal to send the clipboard back, which many terminals refuse
+-- for security -- and Nvim's builtin provider then blocks for a full second,
+-- prints "Waiting for OSC 52 response... Press Ctrl-C to interrupt", and
+-- waits nine more before giving up. With 'clipboard' = unnamedplus below,
+-- every single `p` would pay that. So the paste half reads the unnamed
+-- register instead: yanking here and putting here works, and text yanked on
+-- the client machine is pasted with the terminal's own paste (bracketed
+-- paste), which is how you'd do it anyway.
 --
 -- Running locally this block is skipped on purpose: pbcopy on macOS (or
 -- wl-copy / xclip on a Linux desktop) is the better provider. OSC 52 *reads*
@@ -35,7 +45,15 @@ vim.g.maplocalleader = "\\"
 -- Must be set before anything calls has('clipboard'), which is what
 -- initialises the provider -- hence the position at the top of this file.
 if vim.env.SSH_TTY or vim.env.SSH_CONNECTION then
-  vim.g.clipboard = "osc52"
+  local osc52 = require("vim.ui.clipboard.osc52")
+  local paste = function()
+    return vim.split(vim.fn.getreg('"'), "\n")
+  end
+  vim.g.clipboard = {
+    name = "OSC 52",
+    copy = { ["+"] = osc52.copy("+"), ["*"] = osc52.copy("*") },
+    paste = { ["+"] = paste, ["*"] = paste },
+  }
 end
 
 -- Disable netrw. nvim-tree replaces it, and both being active causes the
@@ -76,7 +94,6 @@ o.signcolumn = "yes" -- always on, so text doesn't jump when a sign appears
 o.cursorline = true
 o.scrolloff = 8 -- keep 8 lines of context above/below the cursor
 o.termguicolors = true
-o.showmode = false -- the statusline already says it
 o.winborder = "rounded" -- 0.12: default border for all floating windows
 
 -- Timings

@@ -189,7 +189,7 @@ map("n", "<leader>fn", "<cmd>enew<CR>", { desc = "New file" })
 
 map("n", "<leader>sg", fzf.live_grep, { desc = "Grep in project" })
 map("n", "<leader>sw", fzf.grep_cword, { desc = "Grep word under cursor" })
-map("v", "<leader>sw", fzf.grep_visual, { desc = "Grep selection" })
+map("x", "<leader>sw", fzf.grep_visual, { desc = "Grep selection" })
 map("n", "<leader>sb", fzf.blines, { desc = "Search in current buffer" })
 map("n", "<leader>sh", fzf.helptags, { desc = "Search help" })
 map("n", "<leader>sk", fzf.keymaps, { desc = "Search keymaps" })
@@ -251,7 +251,7 @@ conform.setup({
 
 -- The single format key. Lives here rather than in the LspAttach handler so
 -- it works in buffers with no language server attached at all.
-map({ "n", "v" }, "<leader>cf", function()
+map({ "n", "x" }, "<leader>cf", function()
   conform.format({ async = true, lsp_format = "fallback" })
 end, { desc = "Format buffer/selection" })
 
@@ -438,8 +438,12 @@ require("gitsigns").setup({
     local function bmap(mode, lhs, rhs, desc)
       map(mode, lhs, rhs, { buffer = bufnr, desc = desc })
     end
-    bmap("n", "]h", gs.next_hunk, "Next git hunk")
-    bmap("n", "[h", gs.prev_hunk, "Previous git hunk")
+    bmap("n", "]h", function()
+      gs.nav_hunk("next")
+    end, "Next git hunk")
+    bmap("n", "[h", function()
+      gs.nav_hunk("prev")
+    end, "Previous git hunk")
     bmap("n", "<leader>gp", gs.preview_hunk, "Preview hunk")
     bmap("n", "<leader>gb", gs.blame_line, "Blame line")
     bmap("n", "<leader>gr", gs.reset_hunk, "Reset hunk")

@@ -80,8 +80,8 @@ map("n", "<leader>qQ", "<cmd>qall!<CR>", { desc = "Quit all (discard changes)" }
 
 -- ------------------------------------------------------------------ editing
 -- Move the visual selection, keeping indentation correct
-map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down" })
-map("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up" })
+map("x", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down" })
+map("x", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up" })
 
 -- Keep the cursor centred when jumping half-pages or cycling matches
 map("n", "<C-d>", "<C-d>zz")
@@ -90,8 +90,8 @@ map("n", "n", "nzzzv")
 map("n", "N", "Nzzzv")
 
 -- Stay in visual mode after shifting
-map("v", "<", "<gv")
-map("v", ">", ">gv")
+map("x", "<", "<gv")
+map("x", ">", ">gv")
 
 -- Briefly highlight yanked text
 vim.api.nvim_create_autocmd("TextYankPost", {
